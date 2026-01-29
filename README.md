@@ -74,3 +74,54 @@ runtime state per version while keeping the stack identical. Each run:
 
 Matrix runs sweep durations, connections, and threads; each variation produces
 its own report under `reports/` and an index file that lists all runs.
+
+```
+                ┌─────────────────────────────┐
+                │ docker compose up           │
+                │ db + web_v1 + web_v2        │
+                └───────────────┬─────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+      ┌───────▼────────┐                  ┌───────▼────────┐
+      │ web_v1         │                  │ web_v2         │
+      │ ENV:           │                  │ ENV:           │
+      │ REGISTRATION_  │                  │ REGISTRATION_  │
+      │ API_VERSION=v1 │                  │ API_VERSION=v2 │
+      └───────┬────────┘                  └───────┬────────┘
+              │                                   │
+              │                                   │
+     ┌────────▼─────────┐               ┌─────────▼────────┐
+     │ v1 routes only   │               │ v2 routes only   │
+     │ /api/v1/register │               │ /api/v2/register │
+     └────────┬─────────┘               └─────────┬────────┘
+              │                                   │
+              └─────────────┬─────────────────────┘
+                            │
+                  ┌─────────▼─────────┐
+                  │ perf:compare      │
+                  │ or perf:matrix    │
+                  │ (wrk + lua)       │
+                  └─────────┬─────────┘
+                            │
+         ┌──────────────────┼───────────────────┐
+         │                  │                   │
+┌────────▼────────┐ ┌───────▼─────────┐ ┌───────▼─────────┐
+│ warmup (v1/v2)  │ │ measured run v1 │ │ measured run v2 │
+│ wrk 5s default  │ │ wrk duration    │ │ wrk duration    │
+└────────┬────────┘ └───────┬─────────┘ └────────┬────────┘
+         │                  │                    │
+         │                  │                    │
+         │          ┌───────▼──────────┐ ┌───────▼───────────┐
+         │          │ docker stats     │ │ docker stats      │
+         │          │ web_v1 container │ │ web_v2 container  │
+         │          │ mem avg/max      │ │ mem avg/max       │
+         │          └───────┬──────────┘ └───────┬───────────┘
+         │                  │                    │
+         └──────────────┬───┴──────────┬─────────┘
+                        │              │
+                 ┌──────▼──────────────▼──────┐
+                 │ write report(s) in reports │
+                 │ per-run + matrix index     │
+                 └────────────────────────────┘
+```
