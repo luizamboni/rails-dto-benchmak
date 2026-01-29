@@ -53,3 +53,19 @@ bundle exec srb tc
 - [V1 vs V2 Performance Report](reports/perf_v1_v2.md)
 - [Perf Matrix Report (2026-01-28 22:39:02)](reports/perf_matrix_20260128-223902.md)
 - [Perf Summary (Aggregated)](reports/perf_summary_20260128-225501.md)
+
+## Performance test methodology
+
+We benchmark v1 vs v2 using `wrk` against the same Rails container so both
+endpoints share identical runtime conditions. Each run:
+
+- Uses the same request method, headers, and JSON payload.
+- Runs a warm-up pass (`WARMUP`, default 5s) to reduce cold-cache effects.
+- Executes measured runs sequentially with a cool-down delay (`COOLDOWN`,
+  default 2s) to reduce GC carryover and transient noise.
+- Alternates run order by default (`ORDER=alternate`) to avoid favoring v1 or v2.
+- Samples container memory via `docker stats` at a fixed interval to record
+  average and peak RSS during each run.
+
+Matrix runs sweep durations, connections, and threads; each variation produces
+its own report under `reports/` and an index file that lists all runs.
