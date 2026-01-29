@@ -52,3 +52,4 @@ bundle exec srb tc
 
 - [V1 vs V2 Performance Report](reports/perf_v1_v2.md)
 - [Perf Matrix Report (2026-01-28 22:39:02)](reports/perf_matrix_20260128-223902.md)
+- [Perf Summary (Aggregated)](reports/perf_summary_20260128-225501.md)
