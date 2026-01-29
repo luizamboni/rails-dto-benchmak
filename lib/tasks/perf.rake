@@ -277,7 +277,7 @@ namespace :perf do
     results_dir = File.join(Dir.pwd, "reports")
     Dir.mkdir(results_dir) unless Dir.exist?(results_dir)
 
-    date_stamp = Time.now.strftime("%Y%m%d-%H%M%S")
+    date_stamp = Time.now.strftime("%Y-%m-%d")
     index_path = File.join(results_dir, "perf_matrix_#{date_stamp}.md")
     index_lines = []
     index_lines << "# Perf Matrix Report"
