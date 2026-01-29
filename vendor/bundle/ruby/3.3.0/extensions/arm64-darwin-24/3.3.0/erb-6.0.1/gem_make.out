@@ -1,0 +1,19 @@
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/erb-6.0.1/ext/erb/escape
+/Users/luizamboni/.rvm/rubies/ruby-3.3.0/bin/ruby extconf.rb
+checking for rb_ext_ractor_safe() in ruby.h... yes
+creating Makefile
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/erb-6.0.1/ext/erb/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-55hgn sitelibdir\=./.gem.20260128-21776-55hgn clean
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/erb-6.0.1/ext/erb/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-55hgn sitelibdir\=./.gem.20260128-21776-55hgn
+compiling escape.c
+linking shared-object erb/escape.bundle
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/erb-6.0.1/ext/erb/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-55hgn sitelibdir\=./.gem.20260128-21776-55hgn install
+/opt/homebrew/opt/coreutils/bin/ginstall -c -m 0755 escape.bundle ./.gem.20260128-21776-55hgn/erb
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/erb-6.0.1/ext/erb/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-55hgn sitelibdir\=./.gem.20260128-21776-55hgn clean

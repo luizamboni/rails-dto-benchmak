@@ -1,0 +1,18 @@
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/cgi-0.5.1/ext/cgi/escape
+/Users/luizamboni/.rvm/rubies/ruby-3.3.0/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/cgi-0.5.1/ext/cgi/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-8xkmjl sitelibdir\=./.gem.20260128-21776-8xkmjl clean
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/cgi-0.5.1/ext/cgi/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-8xkmjl sitelibdir\=./.gem.20260128-21776-8xkmjl
+compiling escape.c
+linking shared-object cgi/escape.bundle
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/cgi-0.5.1/ext/cgi/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-8xkmjl sitelibdir\=./.gem.20260128-21776-8xkmjl install
+/opt/homebrew/opt/coreutils/bin/ginstall -c -m 0755 escape.bundle ./.gem.20260128-21776-8xkmjl/cgi
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/cgi-0.5.1/ext/cgi/escape
+make DESTDIR\= sitearchdir\=./.gem.20260128-21776-8xkmjl sitelibdir\=./.gem.20260128-21776-8xkmjl clean

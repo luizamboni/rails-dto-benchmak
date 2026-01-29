@@ -1,0 +1,19 @@
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+/Users/luizamboni/.rvm/rubies/ruby-3.3.0/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20260128-24728-731x8c sitelibdir\=./.gem.20260128-24728-731x8c clean
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20260128-24728-731x8c sitelibdir\=./.gem.20260128-24728-731x8c
+compiling debug.c
+compiling iseq_collector.c
+linking shared-object debug/debug.bundle
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20260128-24728-731x8c sitelibdir\=./.gem.20260128-24728-731x8c install
+/opt/homebrew/opt/coreutils/bin/ginstall -c -m 0755 debug.bundle ./.gem.20260128-24728-731x8c/debug
+
+current directory: /Users/luizamboni/projects/rails_brenchmark/registration_api/vendor/bundle/ruby/3.3.0/gems/debug-1.11.1/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20260128-24728-731x8c sitelibdir\=./.gem.20260128-24728-731x8c clean

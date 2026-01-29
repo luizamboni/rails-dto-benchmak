@@ -1,0 +1,22 @@
+{
+    "sorbet.enabled": true,
+    "sorbet.useBundler": false,
+    "sorbet.lspConfigs": [
+        {
+            "id": "rvm-wrapper",
+            "name": "Sorbet via RVM",
+            "description": "Loads RVM environment before starting Sorbet",
+            "command": [
+                "bash",
+                "-lc",
+                "bundle exec srb typecheck --lsp"
+            ]
+        }
+    ],
+    "terminal.integrated.profiles.linux": {
+      "bash": {
+        "path": "/bin/bash",
+        "args": ["--login"]
+      }
+    }
+}
