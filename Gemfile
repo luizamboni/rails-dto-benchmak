@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.2.3"
-gem "zeitwerk", "2.6.12"
+gem "zeitwerk", "2.7.4"
 gem "sorbet-runtime", "0.5.12443"
 
 group :development do
