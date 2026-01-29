@@ -56,16 +56,21 @@ bundle exec srb tc
 
 ## Performance test methodology
 
-We benchmark v1 vs v2 using `wrk` against the same Rails container so both
-endpoints share identical runtime conditions. Each run:
+We benchmark v1 vs v2 using `wrk` against two separate Rails containers, one
+per feature-flagged route set (`REGISTRATION_API_VERSION=v1|v2`). This isolates
+runtime state per version while keeping the stack identical. Each run:
 
 - Uses the same request method, headers, and JSON payload.
 - Runs a warm-up pass (`WARMUP`, default 5s) to reduce cold-cache effects.
 - Executes measured runs sequentially with a cool-down delay (`COOLDOWN`,
   default 2s) to reduce GC carryover and transient noise.
 - Alternates run order by default (`ORDER=alternate`) to avoid favoring v1 or v2.
-- Samples container memory via `docker stats` at a fixed interval to record
-  average and peak RSS during each run.
+- Targets distinct base URLs/ports (default `BASE_URL_V1` `http://localhost:3001`
+  and `BASE_URL_V2` `http://localhost:3002`) with versioned paths
+  (`V1_PATH=/api/v1/register`, `V2_PATH=/api/v2/register`).
+- Samples memory per container via `docker stats` at a fixed interval
+  (`DOCKER_CONTAINER_V1/DOCKER_CONTAINER_V2` or `DOCKER_SERVICE_V1/DOCKER_SERVICE_V2`)
+  to record average and peak RSS during each run.
 
 Matrix runs sweep durations, connections, and threads; each variation produces
 its own report under `reports/` and an index file that lists all runs.
