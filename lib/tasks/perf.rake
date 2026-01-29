@@ -235,6 +235,8 @@ namespace :perf do
     PerfHelpers.ensure_wrk!(wrk_bin)
 
     base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
+    base_url_v1 = ENV.fetch("BASE_URL_V1", base_url)
+    base_url_v2 = ENV.fetch("BASE_URL_V2", base_url)
     v1_path = ENV.fetch("V1_PATH", "/api/v1/registrations")
     v2_path = ENV.fetch("V2_PATH", "/api/v2/registrations")
 
@@ -254,10 +256,20 @@ namespace :perf do
     server_pid = ENV["SERVER_PID"]
     docker_container = ENV["DOCKER_CONTAINER"]
     docker_service = ENV["DOCKER_SERVICE"]
+    docker_container_v1 = ENV["DOCKER_CONTAINER_V1"]
+    docker_container_v2 = ENV["DOCKER_CONTAINER_V2"]
+    docker_service_v1 = ENV["DOCKER_SERVICE_V1"]
+    docker_service_v2 = ENV["DOCKER_SERVICE_V2"]
     sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
 
     script_path = File.expand_path("scripts/perf/wrk_request.lua", Dir.pwd)
 
+    if docker_container_v1.nil? && docker_service_v1
+      docker_container_v1 = `docker ps --filter "name=#{docker_service_v1}" --format "{{.Names}}" | head -n 1`.strip
+    end
+    if docker_container_v2.nil? && docker_service_v2
+      docker_container_v2 = `docker ps --filter "name=#{docker_service_v2}" --format "{{.Names}}" | head -n 1`.strip
+    end
     if docker_container.nil? && docker_service
       docker_container = `docker ps --filter "name=#{docker_service}" --format "{{.Names}}" | head -n 1`.strip
     end
@@ -271,11 +283,13 @@ namespace :perf do
     index_lines << "# Perf Matrix Report"
     index_lines << ""
     index_lines << "- Date: #{Time.now.strftime("%Y-%m-%d %H:%M:%S")}"
-    index_lines << "- Base URL: `#{base_url}`"
+    index_lines << "- v1 Base URL: `#{base_url_v1}`"
+    index_lines << "- v2 Base URL: `#{base_url_v2}`"
     index_lines << "- v1: `#{v1_path}`"
     index_lines << "- v2: `#{v2_path}`"
     index_lines << "- Method: `#{method}`"
-    index_lines << "- Docker container: `#{docker_container}`"
+    index_lines << "- Docker container v1: `#{docker_container_v1 || docker_container}`"
+    index_lines << "- Docker container v2: `#{docker_container_v2 || docker_container}`"
     index_lines << ""
     index_lines << "## Runs"
     index_lines << ""
@@ -287,8 +301,16 @@ namespace :perf do
           report_path = File.join(results_dir, "perf_#{label}_#{date_stamp}.md")
 
           endpoints = [
-            { key: "v1", url: "#{base_url}#{v1_path}" },
-            { key: "v2", url: "#{base_url}#{v2_path}" },
+            {
+              key: "v1",
+              url: "#{base_url_v1}#{v1_path}",
+              docker_container: docker_container_v1 || docker_container
+            },
+            {
+              key: "v2",
+              url: "#{base_url_v2}#{v2_path}",
+              docker_container: docker_container_v2 || docker_container
+            },
           ]
           if order == "v2_first"
             endpoints.reverse!
@@ -309,7 +331,7 @@ namespace :perf do
               headers: headers,
               script_path: script_path,
               server_pid: server_pid,
-              docker_container: docker_container,
+              docker_container: ep[:docker_container],
               sample_interval: sample_interval
             )
           end
@@ -328,7 +350,7 @@ namespace :perf do
               headers: headers,
               script_path: script_path,
               server_pid: server_pid,
-              docker_container: docker_container,
+              docker_container: ep[:docker_container],
               sample_interval: sample_interval
             )
             sleep cooldown if cooldown.positive?
@@ -344,10 +366,12 @@ namespace :perf do
             - Connections: #{connections}
             - Threads: #{threads}
             - Method: #{method}
-            - Base URL: #{base_url}
+            - v1 Base URL: #{base_url_v1}
+            - v2 Base URL: #{base_url_v2}
             - v1 Path: #{v1_path}
             - v2 Path: #{v2_path}
-            - Docker container: #{docker_container}
+            - Docker container v1: #{docker_container_v1 || docker_container}
+            - Docker container v2: #{docker_container_v2 || docker_container}
 
             ## Results
 
