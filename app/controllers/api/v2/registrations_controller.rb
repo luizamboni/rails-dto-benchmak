@@ -7,8 +7,8 @@ module Api
 
       sig { void }
       def create
-        dto = Api::V2::RegistrationDto.from(params)
-        result = Api::V2::Registrations::CreateUser.new(dto.to_h).call
+        dto = RegistrationDto.from(params)
+        result = Registrations::CreateUser.new(dto.to_h).call
 
         if result.user
           render json: { id: result.user.id, email: result.user.email }, status: :created
