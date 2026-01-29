@@ -118,6 +118,8 @@ namespace :perf do
     PerfHelpers.ensure_wrk!(wrk_bin)
 
     base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
+    base_url_v1 = ENV.fetch("BASE_URL_V1", base_url)
+    base_url_v2 = ENV.fetch("BASE_URL_V2", base_url)
     v1_path = ENV.fetch("V1_PATH", "/api/v1/registrations")
     v2_path = ENV.fetch("V2_PATH", "/api/v2/registrations")
 
@@ -125,6 +127,9 @@ namespace :perf do
     connections = ENV.fetch("CONNECTIONS", "20")
     threads = ENV.fetch("THREADS", "4")
     method = ENV.fetch("METHOD", "POST")
+    warmup = ENV.fetch("WARMUP", "5s")
+    cooldown = ENV.fetch("COOLDOWN", "2").to_f
+    order = ENV.fetch("ORDER", "alternate") # alternate|v1_first|v2_first
 
     body = ENV.fetch(
       "BODY",
@@ -134,52 +139,81 @@ namespace :perf do
     server_pid = ENV["SERVER_PID"]
     docker_container = ENV["DOCKER_CONTAINER"]
     docker_service = ENV["DOCKER_SERVICE"]
+    docker_container_v1 = ENV["DOCKER_CONTAINER_V1"]
+    docker_container_v2 = ENV["DOCKER_CONTAINER_V2"]
+    docker_service_v1 = ENV["DOCKER_SERVICE_V1"]
+    docker_service_v2 = ENV["DOCKER_SERVICE_V2"]
     sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
 
     script_path = File.expand_path("scripts/perf/wrk_request.lua", Dir.pwd)
 
     puts "Running wrk against:"
-    puts "  v1: #{base_url}#{v1_path}"
-    puts "  v2: #{base_url}#{v2_path}"
+    puts "  v1: #{base_url_v1}#{v1_path}"
+    puts "  v2: #{base_url_v2}#{v2_path}"
     puts "  method=#{method} duration=#{duration} threads=#{threads} connections=#{connections}"
     puts "  server_pid=#{server_pid || "not set"}"
+    if docker_container_v1.nil? && docker_service_v1
+      docker_container_v1 = `docker ps --filter "name=#{docker_service_v1}" --format "{{.Names}}" | head -n 1`.strip
+    end
+    if docker_container_v2.nil? && docker_service_v2
+      docker_container_v2 = `docker ps --filter "name=#{docker_service_v2}" --format "{{.Names}}" | head -n 1`.strip
+    end
     if docker_container.nil? && docker_service
       docker_container = `docker ps --filter "name=#{docker_service}" --format "{{.Names}}" | head -n 1`.strip
     end
 
-    puts "  docker_container=#{docker_container || "not set"}"
+    puts "  docker_container_v1=#{docker_container_v1 || docker_container || "not set"}"
+    puts "  docker_container_v2=#{docker_container_v2 || docker_container || "not set"}"
 
-    v1 = PerfHelpers.run_wrk(
-      label: "v1",
-      url: "#{base_url}#{v1_path}",
-      wrk_bin: wrk_bin,
-      duration: duration,
-      connections: connections,
-      threads: threads,
-      method: method,
-      body: body,
-      headers: headers,
-      script_path: script_path,
-      server_pid: server_pid,
-      docker_container: docker_container,
-      sample_interval: sample_interval
-    )
+    endpoints = [
+      { key: "v1", url: "#{base_url_v1}#{v1_path}", docker_container: docker_container_v1 || docker_container },
+      { key: "v2", url: "#{base_url_v2}#{v2_path}", docker_container: docker_container_v2 || docker_container },
+    ]
+    if order == "v2_first"
+      endpoints.reverse!
+    elsif order == "alternate"
+      endpoints.rotate!
+    end
 
-    v2 = PerfHelpers.run_wrk(
-      label: "v2",
-      url: "#{base_url}#{v2_path}",
-      wrk_bin: wrk_bin,
-      duration: duration,
-      connections: connections,
-      threads: threads,
-      method: method,
-      body: body,
-      headers: headers,
-      script_path: script_path,
-      server_pid: server_pid,
-      docker_container: docker_container,
-      sample_interval: sample_interval
-    )
+    endpoints.each do |ep|
+      PerfHelpers.run_wrk(
+        label: "#{ep[:key]}-warmup",
+        url: ep[:url],
+        wrk_bin: wrk_bin,
+        duration: warmup,
+        connections: connections,
+        threads: threads,
+        method: method,
+        body: body,
+        headers: headers,
+        script_path: script_path,
+        server_pid: server_pid,
+        docker_container: ep[:docker_container],
+        sample_interval: sample_interval
+      )
+    end
+
+    results = {}
+    endpoints.each do |ep|
+      results[ep[:key]] = PerfHelpers.run_wrk(
+        label: ep[:key],
+        url: ep[:url],
+        wrk_bin: wrk_bin,
+        duration: duration,
+        connections: connections,
+        threads: threads,
+        method: method,
+        body: body,
+        headers: headers,
+        script_path: script_path,
+        server_pid: server_pid,
+        docker_container: ep[:docker_container],
+        sample_interval: sample_interval
+      )
+      sleep cooldown if cooldown.positive?
+    end
+    v1 = results["v1"]
+    v2 = results["v2"]
 
     puts "\nResults"
     [v1, v2].each do |r|
@@ -207,6 +241,9 @@ namespace :perf do
     durations = (ENV["DURATIONS"] || "10s,30s").split(",")
     connections_list = (ENV["CONNECTIONS_LIST"] || "20,50").split(",")
     threads_list = (ENV["THREADS_LIST"] || "4").split(",")
+    warmup = ENV.fetch("WARMUP", "5s")
+    cooldown = ENV.fetch("COOLDOWN", "2").to_f
+    order = ENV.fetch("ORDER", "alternate") # alternate|v1_first|v2_first
 
     method = ENV.fetch("METHOD", "POST")
     body = ENV.fetch(
@@ -249,37 +286,55 @@ namespace :perf do
           label = "d#{duration}-c#{connections}-t#{threads}"
           report_path = File.join(results_dir, "perf_#{label}_#{date_stamp}.md")
 
-          v1 = PerfHelpers.run_wrk(
-            label: "v1",
-            url: "#{base_url}#{v1_path}",
-            wrk_bin: wrk_bin,
-            duration: duration,
-            connections: connections,
-            threads: threads,
-            method: method,
-            body: body,
-            headers: headers,
-            script_path: script_path,
-            server_pid: server_pid,
-            docker_container: docker_container,
-            sample_interval: sample_interval
-          )
+          endpoints = [
+            { key: "v1", url: "#{base_url}#{v1_path}" },
+            { key: "v2", url: "#{base_url}#{v2_path}" },
+          ]
+          if order == "v2_first"
+            endpoints.reverse!
+          elsif order == "alternate"
+            endpoints.rotate!
+          end
 
-          v2 = PerfHelpers.run_wrk(
-            label: "v2",
-            url: "#{base_url}#{v2_path}",
-            wrk_bin: wrk_bin,
-            duration: duration,
-            connections: connections,
-            threads: threads,
-            method: method,
-            body: body,
-            headers: headers,
-            script_path: script_path,
-            server_pid: server_pid,
-            docker_container: docker_container,
-            sample_interval: sample_interval
-          )
+          endpoints.each do |ep|
+            PerfHelpers.run_wrk(
+              label: "#{ep[:key]}-warmup",
+              url: ep[:url],
+              wrk_bin: wrk_bin,
+              duration: warmup,
+              connections: connections,
+              threads: threads,
+              method: method,
+              body: body,
+              headers: headers,
+              script_path: script_path,
+              server_pid: server_pid,
+              docker_container: docker_container,
+              sample_interval: sample_interval
+            )
+          end
+
+          results = {}
+          endpoints.each do |ep|
+            results[ep[:key]] = PerfHelpers.run_wrk(
+              label: ep[:key],
+              url: ep[:url],
+              wrk_bin: wrk_bin,
+              duration: duration,
+              connections: connections,
+              threads: threads,
+              method: method,
+              body: body,
+              headers: headers,
+              script_path: script_path,
+              server_pid: server_pid,
+              docker_container: docker_container,
+              sample_interval: sample_interval
+            )
+            sleep cooldown if cooldown.positive?
+          end
+          v1 = results["v1"]
+          v2 = results["v2"]
 
           File.write(report_path, <<~MD)
             # Perf Run: #{label}
