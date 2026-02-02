@@ -3,12 +3,12 @@ source "https://rubygems.org"
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.2.3"
 gem "zeitwerk", "2.6.12"
-gem "sorbet-runtime", "0.5.12443"
+gem "sorbet-runtime", "0.6.12908"
 
 group :development do
-  gem "sorbet", "0.5.12443"
+  gem "sorbet", "0.6.12908"
   gem "sorbet-rails"
-  gem "sorbet-static-and-runtime", "0.5.12443"
+  gem "sorbet-static-and-runtime", "0.6.12908"
   gem "tapioca", require: false
 end
 # Use postgresql as the database for Active Record
