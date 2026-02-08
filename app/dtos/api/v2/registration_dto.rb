@@ -5,10 +5,9 @@ module Api
     class RegistrationDto
       extend T::Sig
 
-      sig { params(params: T.untyped).returns(Api::V2::RegistrationDto) }
+      sig { params(params: T::Hash[String, T.untyped]).returns(Api::V2::RegistrationDto) }
       def self.from(params)
-        payload = params
-        user = payload.fetch("user")
+        user = params.fetch("user")
 
         new(
           email: user.fetch("email"),

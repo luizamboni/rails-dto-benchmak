@@ -13,8 +13,9 @@ module Api
 
       sig { void }
       def update
-        dto = Api::V2::UpdateUserDto.from(params)
-        result = Api::V2::Users::UpdateUser.new(user_id: params[:id].to_i, dto: dto).call
+        dto = Api::V2::UpdateUserDto.from(request.request_parameters)
+        user_id = request.path_parameters.fetch("id").to_i
+        result = Api::V2::Users::UpdateUser.new(user_id: user_id, dto: dto).call
 
         if result.user
           render json: { id: result.user.id, email: result.user.email }, status: :ok

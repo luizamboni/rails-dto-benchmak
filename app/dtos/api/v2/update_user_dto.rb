@@ -5,10 +5,9 @@ module Api
     class UpdateUserDto
       extend T::Sig
 
-      sig { params(params: T.untyped).returns(Api::V2::UpdateUserDto) }
+      sig { params(params: T::Hash[String, T.untyped]).returns(Api::V2::UpdateUserDto) }
       def self.from(params)
-        payload = params.to_unsafe_h
-        user = payload.fetch("user")
+        user = params.fetch("user")
 
         new(
           email: user["email"],
