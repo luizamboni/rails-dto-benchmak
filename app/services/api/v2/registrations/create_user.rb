@@ -7,14 +7,13 @@ module Api
         extend T::Sig
         Result = Struct.new(:user, :errors, keyword_init: true)
 
-        sig { params(params: T::Hash[Symbol, T.untyped]).void }
-        def initialize(params)
-          @params = params
+        sig { void }
+        def initialize
         end
 
-        sig { returns(Result) }
-        def call
-          user = User.new(@params)
+        sig { params(dto: Api::V2::RegistrationDto).returns(Result) }
+        def call(dto)
+          user = User.new(dto.to_h)
 
           if user.save
             Result.new(user: user, errors: [])

@@ -7,7 +7,7 @@ module Api
 
       sig { params(params: T.untyped).returns(Api::V2::RegistrationDto) }
       def self.from(params)
-        payload = params.to_unsafe_h
+        payload = params
         user = payload.fetch("user")
 
         new(
