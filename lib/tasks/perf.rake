@@ -333,6 +333,10 @@ namespace :perf do
       "BODY",
       '{"user":{"email":"perf@example.com","password":"password","password_confirmation":"password"}}'
     )
+    body_422 = ENV.fetch(
+      "BODY_422",
+      '{"user":{"email":"","password":"password","password_confirmation":"mismatch"}}'
+    )
     headers = ENV.fetch("HEADERS", "Content-Type: application/json")
     server_pid = ENV["SERVER_PID"]
     docker_container = ENV["DOCKER_CONTAINER"]
@@ -376,73 +380,79 @@ namespace :perf do
     index_lines << "## Runs"
     index_lines << ""
 
+    scenarios = [
+      { key: "ok", suffix: "", body: body },
+      { key: "422", suffix: "-422", body: body_422 },
+    ]
+
     durations.each do |duration|
       connections_list.each do |connections|
         threads_list.each do |threads|
-          label = "d#{duration}-c#{connections}-t#{threads}"
-          report_path = File.join(results_dir, "perf_#{label}_#{date_stamp}.md")
+          scenarios.each do |scenario|
+            label = "d#{duration}-c#{connections}-t#{threads}#{scenario[:suffix]}"
+            report_path = File.join(results_dir, "perf_#{label}_#{date_stamp}.md")
 
-          endpoints = [
-            {
-              key: "v1",
-              url: "#{base_url_v1}#{v1_path}",
-              docker_container: docker_container_v1 || docker_container
-            },
-            {
-              key: "v2",
-              url: "#{base_url_v2}#{v2_path}",
-              docker_container: docker_container_v2 || docker_container
-            },
-          ]
-          if order == "v2_first"
-            endpoints.reverse!
-          elsif order == "alternate"
-            endpoints.rotate!
-          end
+            endpoints = [
+              {
+                key: "v1",
+                url: "#{base_url_v1}#{v1_path}",
+                docker_container: docker_container_v1 || docker_container
+              },
+              {
+                key: "v2",
+                url: "#{base_url_v2}#{v2_path}",
+                docker_container: docker_container_v2 || docker_container
+              },
+            ]
+            if order == "v2_first"
+              endpoints.reverse!
+            elsif order == "alternate"
+              endpoints.rotate!
+            end
 
-          endpoints.each do |ep|
-            PerfHelpers.run_wrk(
-              label: "#{ep[:key]}-warmup",
-              url: ep[:url],
-              wrk_bin: wrk_bin,
-              duration: warmup,
-              connections: connections,
-              threads: threads,
-              method: method,
-              body: body,
-              headers: headers,
-              script_path: script_path,
-              server_pid: server_pid,
-              docker_container: ep[:docker_container],
-              sample_interval: sample_interval,
-              timeout: timeout
-            )
-          end
+            endpoints.each do |ep|
+              PerfHelpers.run_wrk(
+                label: "#{ep[:key]}-warmup",
+                url: ep[:url],
+                wrk_bin: wrk_bin,
+                duration: warmup,
+                connections: connections,
+                threads: threads,
+                method: method,
+                body: scenario[:body],
+                headers: headers,
+                script_path: script_path,
+                server_pid: server_pid,
+                docker_container: ep[:docker_container],
+                sample_interval: sample_interval,
+                timeout: timeout
+              )
+            end
 
-          results = {}
-          endpoints.each do |ep|
-            results[ep[:key]] = PerfHelpers.run_wrk(
-              label: ep[:key],
-              url: ep[:url],
-              wrk_bin: wrk_bin,
-              duration: duration,
-              connections: connections,
-              threads: threads,
-              method: method,
-              body: body,
-              headers: headers,
-              script_path: script_path,
-              server_pid: server_pid,
-              docker_container: ep[:docker_container],
-              sample_interval: sample_interval,
-              timeout: timeout
-            )
-            sleep cooldown if cooldown.positive?
-          end
-          v1 = results["v1"]
-          v2 = results["v2"]
+            results = {}
+            endpoints.each do |ep|
+              results[ep[:key]] = PerfHelpers.run_wrk(
+                label: ep[:key],
+                url: ep[:url],
+                wrk_bin: wrk_bin,
+                duration: duration,
+                connections: connections,
+                threads: threads,
+                method: method,
+                body: scenario[:body],
+                headers: headers,
+                script_path: script_path,
+                server_pid: server_pid,
+                docker_container: ep[:docker_container],
+                sample_interval: sample_interval,
+                timeout: timeout
+              )
+              sleep cooldown if cooldown.positive?
+            end
+            v1 = results["v1"]
+            v2 = results["v2"]
 
-          File.write(report_path, <<~MD)
+            File.write(report_path, <<~MD)
             # Perf Run: #{label}
 
             - Date: #{Time.now.strftime("%Y-%m-%d %H:%M:%S")}
@@ -450,6 +460,7 @@ namespace :perf do
             - Connections: #{connections}
             - Threads: #{threads}
             - Method: #{method}
+            - Scenario: #{scenario[:key]}
             - v1 Base URL: #{base_url_v1}
             - v2 Base URL: #{base_url_v2}
             - v1 Path: #{v1_path}
@@ -477,8 +488,9 @@ namespace :perf do
             ```
           MD
 
-          report_file = File.basename(report_path)
-          index_lines << "- `#{label}`: [#{report_file}](#{report_file})"
+            report_file = File.basename(report_path)
+            index_lines << "- `#{label}`: [#{report_file}](#{report_file})"
+          end
         end
       end
     end
