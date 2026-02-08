@@ -40,7 +40,7 @@ module PerfHelpers
     rss_kb / 1024.0
   end
 
-  def self.run_wrk(label:, url:, wrk_bin:, duration:, connections:, threads:, method:, body:, headers:, script_path:, server_pid:, docker_container:, sample_interval:)
+  def self.run_wrk(label:, url:, wrk_bin:, duration:, connections:, threads:, method:, body:, headers:, script_path:, server_pid:, docker_container:, sample_interval:, timeout:)
     env = {
       "WRK_METHOD" => method,
       "WRK_BODY" => body,
@@ -52,10 +52,11 @@ module PerfHelpers
       "-t#{threads}",
       "-c#{connections}",
       "-d#{duration}",
+      ("-T#{timeout}" if timeout),
       "-s",
       script_path,
       url,
-    ]
+    ].compact
 
     samples = []
     sampler = nil
@@ -112,6 +113,83 @@ module PerfHelpers
 end
 
 namespace :perf do
+  desc "Run a single perf test against one endpoint with wrk"
+  task :single do
+    wrk_bin = ENV.fetch("WRK_BIN", "wrk")
+    PerfHelpers.ensure_wrk!(wrk_bin)
+
+    base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
+    path = ENV.fetch("PERF_PATH", "/api/v1/register")
+    duration = ENV.fetch("DURATION", "10s")
+    connections = ENV.fetch("CONNECTIONS", "20")
+    threads = ENV.fetch("THREADS", "4")
+    method = ENV.fetch("METHOD", "POST")
+    warmup = ENV.fetch("WARMUP", "5s")
+
+    body = ENV.fetch(
+      "BODY",
+      '{"user":{"email":"perf@example.com","password":"password","password_confirmation":"password"}}'
+    )
+    headers = ENV.fetch("HEADERS", "Content-Type: application/json")
+    server_pid = ENV["SERVER_PID"]
+    docker_container = ENV["DOCKER_CONTAINER"]
+    docker_service = ENV["DOCKER_SERVICE"]
+    sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
+    timeout = ENV["WRK_TIMEOUT"]
+
+    script_path = File.expand_path("scripts/perf/wrk_request.lua", Dir.pwd)
+
+    if docker_container.nil? && docker_service
+      docker_container = `docker ps --filter "name=#{docker_service}" --format "{{.Names}}" | head -n 1`.strip
+    end
+
+    url = "#{base_url}#{path}"
+    puts "Running wrk against: #{url}"
+    puts "  method=#{method} duration=#{duration} threads=#{threads} connections=#{connections}"
+    puts "  server_pid=#{server_pid || "not set"}"
+    puts "  docker_container=#{docker_container || "not set"}"
+
+    PerfHelpers.run_wrk(
+      label: "warmup",
+      url: url,
+      wrk_bin: wrk_bin,
+      duration: warmup,
+      connections: connections,
+      threads: threads,
+      method: method,
+      body: body,
+      headers: headers,
+      script_path: script_path,
+      server_pid: server_pid,
+      docker_container: docker_container,
+      sample_interval: sample_interval,
+      timeout: timeout
+    )
+
+    result = PerfHelpers.run_wrk(
+      label: "single",
+      url: url,
+      wrk_bin: wrk_bin,
+      duration: duration,
+      connections: connections,
+      threads: threads,
+      method: method,
+      body: body,
+      headers: headers,
+      script_path: script_path,
+      server_pid: server_pid,
+      docker_container: docker_container,
+      sample_interval: sample_interval,
+      timeout: timeout
+    )
+
+    puts "\nResult"
+    puts "- #{result[:label]}: #{result[:reqs_sec]} req/s, latency #{result[:latency]}"
+    if result[:mem]
+      puts "  memory: avg #{result[:mem][:avg_mb]} MB, max #{result[:mem][:max_mb]} MB (#{result[:mem][:samples]} samples)"
+    end
+  end
+
   desc "Compare v1/v2 endpoints with wrk (throughput + memory sampling)"
   task :compare do
     wrk_bin = ENV.fetch("WRK_BIN", "wrk")
@@ -120,8 +198,8 @@ namespace :perf do
     base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
     base_url_v1 = ENV.fetch("BASE_URL_V1", base_url)
     base_url_v2 = ENV.fetch("BASE_URL_V2", base_url)
-    v1_path = ENV.fetch("V1_PATH", "/api/v1/registrations")
-    v2_path = ENV.fetch("V2_PATH", "/api/v2/registrations")
+    v1_path = ENV.fetch("V1_PATH", "/api/v1/register")
+    v2_path = ENV.fetch("V2_PATH", "/api/v2/register")
 
     duration = ENV.fetch("DURATION", "10s")
     connections = ENV.fetch("CONNECTIONS", "20")
@@ -144,6 +222,7 @@ namespace :perf do
     docker_service_v1 = ENV["DOCKER_SERVICE_V1"]
     docker_service_v2 = ENV["DOCKER_SERVICE_V2"]
     sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
+    timeout = ENV["WRK_TIMEOUT"]
 
     script_path = File.expand_path("scripts/perf/wrk_request.lua", Dir.pwd)
 
@@ -189,7 +268,8 @@ namespace :perf do
         script_path: script_path,
         server_pid: server_pid,
         docker_container: ep[:docker_container],
-        sample_interval: sample_interval
+        sample_interval: sample_interval,
+        timeout: timeout
       )
     end
 
@@ -208,7 +288,8 @@ namespace :perf do
         script_path: script_path,
         server_pid: server_pid,
         docker_container: ep[:docker_container],
-        sample_interval: sample_interval
+        sample_interval: sample_interval,
+        timeout: timeout
       )
       sleep cooldown if cooldown.positive?
     end
@@ -237,8 +318,8 @@ namespace :perf do
     base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
     base_url_v1 = ENV.fetch("BASE_URL_V1", base_url)
     base_url_v2 = ENV.fetch("BASE_URL_V2", base_url)
-    v1_path = ENV.fetch("V1_PATH", "/api/v1/registrations")
-    v2_path = ENV.fetch("V2_PATH", "/api/v2/registrations")
+    v1_path = ENV.fetch("V1_PATH", "/api/v1/register")
+    v2_path = ENV.fetch("V2_PATH", "/api/v2/register")
 
     durations = (ENV["DURATIONS"] || "10s,30s").split(",")
     connections_list = (ENV["CONNECTIONS_LIST"] || "20,50").split(",")
@@ -261,6 +342,7 @@ namespace :perf do
     docker_service_v1 = ENV["DOCKER_SERVICE_V1"]
     docker_service_v2 = ENV["DOCKER_SERVICE_V2"]
     sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
+    timeout = ENV["WRK_TIMEOUT"]
 
     script_path = File.expand_path("scripts/perf/wrk_request.lua", Dir.pwd)
 
@@ -332,7 +414,8 @@ namespace :perf do
               script_path: script_path,
               server_pid: server_pid,
               docker_container: ep[:docker_container],
-              sample_interval: sample_interval
+              sample_interval: sample_interval,
+              timeout: timeout
             )
           end
 
@@ -351,7 +434,8 @@ namespace :perf do
               script_path: script_path,
               server_pid: server_pid,
               docker_container: ep[:docker_container],
-              sample_interval: sample_interval
+              sample_interval: sample_interval,
+              timeout: timeout
             )
             sleep cooldown if cooldown.positive?
           end
@@ -393,7 +477,8 @@ namespace :perf do
             ```
           MD
 
-          index_lines << "- `#{label}`: `#{File.basename(report_path)}`"
+          report_file = File.basename(report_path)
+          index_lines << "- `#{label}`: [#{report_file}](#{report_file})"
         end
       end
     end
