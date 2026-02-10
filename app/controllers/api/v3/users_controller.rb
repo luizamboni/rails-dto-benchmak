@@ -6,7 +6,7 @@ module Api
       include Api::V3
 
       contract responds: {
-        ok: UserListResponse
+        [:ok] => UserListResponse
       }
       def index
         users = Users::ListUsers.new.call

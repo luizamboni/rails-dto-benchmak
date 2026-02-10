@@ -6,10 +6,13 @@ module Api
 
       include Api::V3
 
-      contract body: RegistrationRequest, responds: { 
-        [:created] => RegistrationResponse, 
-        [:unprocessable_entity, :bad_request] => ErrorResponse
-      }
+      contract(
+        body: RegistrationRequest, 
+        responds: { 
+          [:created] => RegistrationResponse, 
+          [:unprocessable_entity, :bad_request] => ErrorResponse
+        }
+      )
       def create
         body_payload = resolve_body!
         result = Registrations::CreateUser.new.call(body_payload)
