@@ -11,6 +11,7 @@ Rails.application.routes.draw do
     if api_route_version == "v3"
       namespace :v3 do
         post "register" => "registrations#create"
+        resources :users, only: [:index, :update]
         get "docs.json" => "docs#spec", defaults: { format: :json }
         get "docs" => "docs#show", format: false
       end
