@@ -94,8 +94,15 @@ module Api
 
         responds.each_with_object({}) do |(status, dto), acc|
           code = status_code(status)
+          description = status.to_s.tr("_", " ").capitalize
+
+          if dto.nil?
+            acc[code] = { description: description }
+            next
+          end
+
           acc[code] = {
-            description: status.to_s.tr("_", " ").capitalize,
+            description: description,
             content: {
               "application/json" => {
                 schema: dto_schema(dto),
