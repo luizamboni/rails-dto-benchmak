@@ -6,8 +6,8 @@ module Api
 
       include Api::V3
 
-      contract body: RegistrationRequest, responds: {
-        created: RegistrationResponse,
+      contract body: RegistrationRequest, responds: { 
+        [:created] => RegistrationResponse, 
         [:unprocessable_entity, :bad_request] => ErrorResponse
       }
       def create
