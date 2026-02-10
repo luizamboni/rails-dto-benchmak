@@ -10,7 +10,12 @@ module Api
       }
       def index
         users = Users::ListUsers.new.call
-        responds_for_status :ok, { data: users.as_json }
+        responds_for_status :ok, {
+          data: users.as_json,
+          links: {
+            self: request.original_url
+          }
+        }
       end
 
       contract path: UserPathParams, body: UserUpdateRequest, responds: {
