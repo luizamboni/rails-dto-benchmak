@@ -82,14 +82,16 @@ module Api
         dto = self.class.contracts[action_name.to_sym][:path]
         return unless dto
 
-        dto.new(request.path_parameters)
+        params = request.path_parameters
+        dto.new(slice_dto_params(dto, params))
       end
 
       def resolve_query!
         dto = self.class.contracts[action_name.to_sym][:query]
         return unless dto
 
-        dto.new(request.query_parameters)
+        params = request.query_parameters
+        dto.new(slice_dto_params(dto, params))
       end
 
       def resolve_body!
@@ -99,6 +101,13 @@ module Api
         body = request.request_parameters
         body = body.to_unsafe_h if body.respond_to?(:to_unsafe_h)
         dto.new(body)
+      end
+
+      def slice_dto_params(dto, params)
+        params = (params || {}).to_h
+        params = params.to_unsafe_h if params.respond_to?(:to_unsafe_h)
+        allowed = dto.fields.keys.map(&:to_sym)
+        params.transform_keys(&:to_sym).slice(*allowed)
       end
 
       def responds_for_status(status, params)
