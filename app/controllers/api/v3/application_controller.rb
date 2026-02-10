@@ -59,7 +59,10 @@ module Api
       include ActionController::Head
 
       def self.contract(path: nil, query: nil, body: nil, responds: nil)
-        @__next_contract__ = { path: path, query: query, body: body, responds: responds }
+        normalized_responds = responds&.each_with_object({}) do |(key, dto), acc|
+          Array(key).each { |status| acc[status] = dto }
+        end
+        @__next_contract__ = { path: path, query: query, body: body, responds: normalized_responds }
       end
 
       def self.method_added(name)
