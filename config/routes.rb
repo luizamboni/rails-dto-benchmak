@@ -8,7 +8,13 @@ Rails.application.routes.draw do
   api_route_version = ENV.fetch("REGISTRATION_API_VERSION", "v1")
 
   namespace :api do
-    if api_route_version == "v2"
+    if api_route_version == "v3"
+      namespace :v3 do
+        post "register" => "registrations#create"
+        get "docs.json" => "docs#spec", defaults: { format: :json }
+        get "docs" => "docs#show", format: false
+      end
+    elsif api_route_version == "v2"
       namespace :v2 do
         post "register" => "registrations#create"
         resources :users, only: [:index, :update]
