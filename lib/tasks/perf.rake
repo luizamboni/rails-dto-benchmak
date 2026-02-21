@@ -130,6 +130,10 @@ namespace :perf do
       "BODY",
       '{"user":{"email":"perf@example.com","password":"password","password_confirmation":"password"}}'
     )
+    body_v3 = ENV.fetch(
+      "BODY_V3",
+      '{"email":"perf@example.com","password":"password","password_confirmation":"password"}'
+    )
     headers = ENV.fetch("HEADERS", "Content-Type: application/json")
     server_pid = ENV["SERVER_PID"]
     docker_container = ENV["DOCKER_CONTAINER"]
@@ -190,7 +194,7 @@ namespace :perf do
     end
   end
 
-  desc "Compare v1/v2 endpoints with wrk (throughput + memory sampling)"
+  desc "Compare v1/v2/v3 endpoints with wrk (throughput + memory sampling)"
   task :compare do
     wrk_bin = ENV.fetch("WRK_BIN", "wrk")
     PerfHelpers.ensure_wrk!(wrk_bin)
@@ -198,8 +202,10 @@ namespace :perf do
     base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
     base_url_v1 = ENV.fetch("BASE_URL_V1", base_url)
     base_url_v2 = ENV.fetch("BASE_URL_V2", base_url)
+    base_url_v3 = ENV.fetch("BASE_URL_V3", base_url)
     v1_path = ENV.fetch("V1_PATH", "/api/v1/register")
     v2_path = ENV.fetch("V2_PATH", "/api/v2/register")
+    v3_path = ENV.fetch("V3_PATH", "/api/v3/register")
 
     duration = ENV.fetch("DURATION", "10s")
     connections = ENV.fetch("CONNECTIONS", "20")
@@ -219,8 +225,10 @@ namespace :perf do
     docker_service = ENV["DOCKER_SERVICE"]
     docker_container_v1 = ENV["DOCKER_CONTAINER_V1"]
     docker_container_v2 = ENV["DOCKER_CONTAINER_V2"]
+    docker_container_v3 = ENV["DOCKER_CONTAINER_V3"]
     docker_service_v1 = ENV["DOCKER_SERVICE_V1"]
     docker_service_v2 = ENV["DOCKER_SERVICE_V2"]
+    docker_service_v3 = ENV["DOCKER_SERVICE_V3"]
     sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
     timeout = ENV["WRK_TIMEOUT"]
 
@@ -229,6 +237,7 @@ namespace :perf do
     puts "Running wrk against:"
     puts "  v1: #{base_url_v1}#{v1_path}"
     puts "  v2: #{base_url_v2}#{v2_path}"
+    puts "  v3: #{base_url_v3}#{v3_path}"
     puts "  method=#{method} duration=#{duration} threads=#{threads} connections=#{connections}"
     puts "  server_pid=#{server_pid || "not set"}"
     if docker_container_v1.nil? && docker_service_v1
@@ -237,16 +246,21 @@ namespace :perf do
     if docker_container_v2.nil? && docker_service_v2
       docker_container_v2 = `docker ps --filter "name=#{docker_service_v2}" --format "{{.Names}}" | head -n 1`.strip
     end
+    if docker_container_v3.nil? && docker_service_v3
+      docker_container_v3 = `docker ps --filter "name=#{docker_service_v3}" --format "{{.Names}}" | head -n 1`.strip
+    end
     if docker_container.nil? && docker_service
       docker_container = `docker ps --filter "name=#{docker_service}" --format "{{.Names}}" | head -n 1`.strip
     end
 
     puts "  docker_container_v1=#{docker_container_v1 || docker_container || "not set"}"
     puts "  docker_container_v2=#{docker_container_v2 || docker_container || "not set"}"
+    puts "  docker_container_v3=#{docker_container_v3 || docker_container || "not set"}"
 
     endpoints = [
-      { key: "v1", url: "#{base_url_v1}#{v1_path}", docker_container: docker_container_v1 || docker_container },
-      { key: "v2", url: "#{base_url_v2}#{v2_path}", docker_container: docker_container_v2 || docker_container },
+      { key: "v1", url: "#{base_url_v1}#{v1_path}", docker_container: docker_container_v1 || docker_container, body: body },
+      { key: "v2", url: "#{base_url_v2}#{v2_path}", docker_container: docker_container_v2 || docker_container, body: body },
+      { key: "v3", url: "#{base_url_v3}#{v3_path}", docker_container: docker_container_v3 || docker_container, body: body_v3 },
     ]
     if order == "v2_first"
       endpoints.reverse!
@@ -263,7 +277,7 @@ namespace :perf do
         connections: connections,
         threads: threads,
         method: method,
-        body: body,
+        body: ep[:body],
         headers: headers,
         script_path: script_path,
         server_pid: server_pid,
@@ -283,7 +297,7 @@ namespace :perf do
         connections: connections,
         threads: threads,
         method: method,
-        body: body,
+        body: ep[:body],
         headers: headers,
         script_path: script_path,
         server_pid: server_pid,
@@ -295,9 +309,10 @@ namespace :perf do
     end
     v1 = results["v1"]
     v2 = results["v2"]
+    v3 = results["v3"]
 
     puts "\nResults"
-    [v1, v2].each do |r|
+    [v1, v2, v3].each do |r|
       puts "- #{r[:label]}: #{r[:reqs_sec]} req/s, latency #{r[:latency]}"
       if r[:mem]
         puts "  memory: avg #{r[:mem][:avg_mb]} MB, max #{r[:mem][:max_mb]} MB (#{r[:mem][:samples]} samples)"
@@ -307,6 +322,10 @@ namespace :perf do
     if v1[:reqs_sec] && v2[:reqs_sec]
       delta = (v2[:reqs_sec] - v1[:reqs_sec]).round(2)
       puts "\nThroughput delta (v2 - v1): #{delta} req/s"
+    end
+    if v1[:reqs_sec] && v3[:reqs_sec]
+      delta = (v3[:reqs_sec] - v1[:reqs_sec]).round(2)
+      puts "Throughput delta (v3 - v1): #{delta} req/s"
     end
   end
 
@@ -318,8 +337,10 @@ namespace :perf do
     base_url = ENV.fetch("BASE_URL", "http://localhost:3000")
     base_url_v1 = ENV.fetch("BASE_URL_V1", base_url)
     base_url_v2 = ENV.fetch("BASE_URL_V2", base_url)
+    base_url_v3 = ENV.fetch("BASE_URL_V3", base_url)
     v1_path = ENV.fetch("V1_PATH", "/api/v1/register")
     v2_path = ENV.fetch("V2_PATH", "/api/v2/register")
+    v3_path = ENV.fetch("V3_PATH", "/api/v3/register")
 
     durations = (ENV["DURATIONS"] || "10s,30s").split(",")
     connections_list = (ENV["CONNECTIONS_LIST"] || "20,50").split(",")
@@ -333,9 +354,17 @@ namespace :perf do
       "BODY",
       '{"user":{"email":"perf@example.com","password":"password","password_confirmation":"password"}}'
     )
+    body_v3 = ENV.fetch(
+      "BODY_V3",
+      '{"email":"perf@example.com","password":"password","password_confirmation":"password"}'
+    )
     body_422 = ENV.fetch(
       "BODY_422",
       '{"user":{"email":"","password":"password","password_confirmation":"mismatch"}}'
+    )
+    body_422_v3 = ENV.fetch(
+      "BODY_422_V3",
+      '{"email":"","password":"password","password_confirmation":"mismatch"}'
     )
     headers = ENV.fetch("HEADERS", "Content-Type: application/json")
     server_pid = ENV["SERVER_PID"]
@@ -343,8 +372,10 @@ namespace :perf do
     docker_service = ENV["DOCKER_SERVICE"]
     docker_container_v1 = ENV["DOCKER_CONTAINER_V1"]
     docker_container_v2 = ENV["DOCKER_CONTAINER_V2"]
+    docker_container_v3 = ENV["DOCKER_CONTAINER_V3"]
     docker_service_v1 = ENV["DOCKER_SERVICE_V1"]
     docker_service_v2 = ENV["DOCKER_SERVICE_V2"]
+    docker_service_v3 = ENV["DOCKER_SERVICE_V3"]
     sample_interval = ENV.fetch("MEM_SAMPLE_INTERVAL", "0.5").to_f
     timeout = ENV["WRK_TIMEOUT"]
 
@@ -355,6 +386,9 @@ namespace :perf do
     end
     if docker_container_v2.nil? && docker_service_v2
       docker_container_v2 = `docker ps --filter "name=#{docker_service_v2}" --format "{{.Names}}" | head -n 1`.strip
+    end
+    if docker_container_v3.nil? && docker_service_v3
+      docker_container_v3 = `docker ps --filter "name=#{docker_service_v3}" --format "{{.Names}}" | head -n 1`.strip
     end
     if docker_container.nil? && docker_service
       docker_container = `docker ps --filter "name=#{docker_service}" --format "{{.Names}}" | head -n 1`.strip
@@ -371,18 +405,21 @@ namespace :perf do
     index_lines << "- Date: #{Time.now.strftime("%Y-%m-%d %H:%M:%S")}"
     index_lines << "- v1 Base URL: `#{base_url_v1}`"
     index_lines << "- v2 Base URL: `#{base_url_v2}`"
+    index_lines << "- v3 Base URL: `#{base_url_v3}`"
     index_lines << "- v1: `#{v1_path}`"
     index_lines << "- v2: `#{v2_path}`"
+    index_lines << "- v3: `#{v3_path}`"
     index_lines << "- Method: `#{method}`"
     index_lines << "- Docker container v1: `#{docker_container_v1 || docker_container}`"
     index_lines << "- Docker container v2: `#{docker_container_v2 || docker_container}`"
+    index_lines << "- Docker container v3: `#{docker_container_v3}`"
     index_lines << ""
     index_lines << "## Runs"
     index_lines << ""
 
     scenarios = [
-      { key: "ok", suffix: "", body: body },
-      { key: "422", suffix: "-422", body: body_422 },
+      { key: "ok", suffix: "", body: body, body_v3: body_v3 },
+      { key: "422", suffix: "-422", body: body_422, body_v3: body_422_v3 },
     ]
 
     durations.each do |duration|
@@ -403,6 +440,11 @@ namespace :perf do
                 url: "#{base_url_v2}#{v2_path}",
                 docker_container: docker_container_v2 || docker_container
               },
+              {
+                key: "v3",
+                url: "#{base_url_v3}#{v3_path}",
+                docker_container: docker_container_v3
+              },
             ]
             if order == "v2_first"
               endpoints.reverse!
@@ -411,6 +453,7 @@ namespace :perf do
             end
 
             endpoints.each do |ep|
+              request_body = ep[:key] == "v3" ? scenario[:body_v3] : scenario[:body]
               PerfHelpers.run_wrk(
                 label: "#{ep[:key]}-warmup",
                 url: ep[:url],
@@ -419,7 +462,7 @@ namespace :perf do
                 connections: connections,
                 threads: threads,
                 method: method,
-                body: scenario[:body],
+                body: request_body,
                 headers: headers,
                 script_path: script_path,
                 server_pid: server_pid,
@@ -431,6 +474,7 @@ namespace :perf do
 
             results = {}
             endpoints.each do |ep|
+              request_body = ep[:key] == "v3" ? scenario[:body_v3] : scenario[:body]
               results[ep[:key]] = PerfHelpers.run_wrk(
                 label: ep[:key],
                 url: ep[:url],
@@ -439,7 +483,7 @@ namespace :perf do
                 connections: connections,
                 threads: threads,
                 method: method,
-                body: scenario[:body],
+                body: request_body,
                 headers: headers,
                 script_path: script_path,
                 server_pid: server_pid,
@@ -451,6 +495,7 @@ namespace :perf do
             end
             v1 = results["v1"]
             v2 = results["v2"]
+            v3 = results["v3"]
 
             File.write(report_path, <<~MD)
             # Perf Run: #{label}
@@ -463,10 +508,13 @@ namespace :perf do
             - Scenario: #{scenario[:key]}
             - v1 Base URL: #{base_url_v1}
             - v2 Base URL: #{base_url_v2}
+            - v3 Base URL: #{base_url_v3}
             - v1 Path: #{v1_path}
             - v2 Path: #{v2_path}
+            - v3 Path: #{v3_path}
             - Docker container v1: #{docker_container_v1 || docker_container}
             - Docker container v2: #{docker_container_v2 || docker_container}
+            - Docker container v3: #{docker_container_v3}
 
             ## Results
 
@@ -474,6 +522,7 @@ namespace :perf do
             |---|---:|---:|---:|---:|---:|
             | v1 | #{v1[:reqs_sec]} | #{v1[:latency]} | #{v1.dig(:mem, :avg_mb)} | #{v1.dig(:mem, :max_mb)} | #{v1.dig(:mem, :samples)} |
             | v2 | #{v2[:reqs_sec]} | #{v2[:latency]} | #{v2.dig(:mem, :avg_mb)} | #{v2.dig(:mem, :max_mb)} | #{v2.dig(:mem, :samples)} |
+            | v3 | #{v3[:reqs_sec]} | #{v3[:latency]} | #{v3.dig(:mem, :avg_mb)} | #{v3.dig(:mem, :max_mb)} | #{v3.dig(:mem, :samples)} |
 
             ## Raw wrk output
 
@@ -485,6 +534,11 @@ namespace :perf do
             ### v2
             ```
             #{v2[:raw]}
+            ```
+
+            ### v3
+            ```
+            #{v3[:raw]}
             ```
           MD
 

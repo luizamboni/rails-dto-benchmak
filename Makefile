@@ -53,9 +53,10 @@ perf-compare-v1:
 
 perf-matrix:
 	WRK_TIMEOUT=$(WRK_TIMEOUT) BUNDLE_PATH=vendor/bundle \
-		DOCKER_SERVICE_V1=web_v1  DOCKER_SERVICE_V2=web_v2 \
+		DOCKER_SERVICE_V1=web_v1  DOCKER_SERVICE_V2=web_v2 DOCKER_SERVICE_V3=web_v3 \
 		BASE_URL_V1=http://localhost:3001 V1_PATH=/api/v1/register \
 		BASE_URL_V2=http://localhost:3002 V2_PATH=/api/v2/register \
+		BASE_URL_V3=http://localhost:3003 V3_PATH=/api/v3/register \
 		ruby -S bundle exec rake perf:matrix
 
 
