@@ -7,7 +7,7 @@ module Api
 
       sig { void }
       def create
-        dto = RegistrationDto.from(request.request_parameters)
+        dto = profiler_step("dto.parse") { RegistrationDto.from(request.request_parameters) }
         result = Registrations::CreateUser.new.call(dto)
 
         if result.user
@@ -17,6 +17,14 @@ module Api
         end
       rescue KeyError
         render json: { errors: [ "invalid payload" ] }, status: :bad_request
+      end
+
+      def profiler_step(name, &block)
+        if defined?(Rack::MiniProfiler)
+          Rack::MiniProfiler.step(name, &block)
+        else
+          block.call
+        end
       end
     end
   end

@@ -14,7 +14,7 @@ module Api
         }
       )
       def create
-        body_payload = resolve_body!
+        body_payload = profiler_step("dto.parse") { resolve_body! }
         result = Registrations::CreateUser.new.call(body_payload)
 
         if result.user
@@ -25,6 +25,14 @@ module Api
       rescue StrictDTO::Error, KeyError => e
         Rails.logger.warn("v3 invalid payload: #{e.class}: #{e.message}")
         responds_for_status :bad_request, { errors: [ "invalid payload" ] }
+      end
+
+      def profiler_step(name, &block)
+        if defined?(Rack::MiniProfiler)
+          Rack::MiniProfiler.step(name, &block)
+        else
+          block.call
+        end
       end
     end
   end

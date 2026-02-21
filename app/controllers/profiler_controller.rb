@@ -71,6 +71,7 @@ class ProfilerController < ApplicationController
     sql = entry[:sql_count] || 0
     id = entry[:id]
     details = id ? "/mini-profiler-resources/results?id=#{ERB::Util.url_encode(id)}" : "#"
+    details_full = id ? "#{details}&pp=full-backtrace" : "#"
 
     <<~HTML
       <tr>
@@ -79,7 +80,7 @@ class ProfilerController < ApplicationController
         <td>#{ERB::Util.html_escape(path)}</td>
         <td>#{ERB::Util.html_escape(duration.to_s)}</td>
         <td>#{ERB::Util.html_escape(sql.to_s)}</td>
-        <td><a href="#{details}">open</a></td>
+        <td><a href="#{details}">open</a> | <a href="#{details_full}">full backtrace</a></td>
       </tr>
     HTML
   end

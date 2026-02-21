@@ -9,12 +9,23 @@ module Api
         end
 
         def call
-          user = User.new(@params)
+          user = profiler_step("user.build") { User.new(@params) }
 
-          if user.save
+          if profiler_step("user.save") { user.save }
             Result.new(user: user, errors: [])
           else
-            Result.new(user: nil, errors: user.errors.full_messages)
+            errors = profiler_step("user.errors") { user.errors.full_messages }
+            Result.new(user: nil, errors: errors)
+          end
+        end
+
+        private
+
+        def profiler_step(name, &block)
+          if defined?(Rack::MiniProfiler)
+            Rack::MiniProfiler.step(name, &block)
+          else
+            block.call
           end
         end
       end
