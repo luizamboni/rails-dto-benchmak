@@ -11,7 +11,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   web_v1:
-    build: .
+    build:
+      context: .
+      args:
+        BUNDLE_WITHOUT: "test"
     command: bundle exec rails s -b 0.0.0.0 -p 3000 -P /rails/tmp/pids/server_v1.pid
     environment:
       DATABASE_HOST: db
@@ -28,7 +31,10 @@ services:
       - db
 
   web_v2:
-    build: .
+    build:
+      context: .
+      args:
+        BUNDLE_WITHOUT: "test"
     command: bundle exec rails s -b 0.0.0.0 -p 3000 -P /rails/tmp/pids/server_v2.pid
     environment:
       DATABASE_HOST: db
@@ -45,7 +51,10 @@ services:
       - db
 
   web_v3:
-    build: .
+    build:
+      context: .
+      args:
+        BUNDLE_WITHOUT: "test"
     command: bundle exec rails s -b 0.0.0.0 -p 3000 -P /rails/tmp/pids/server_v3.pid
     environment:
       DATABASE_HOST: db

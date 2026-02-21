@@ -28,6 +28,10 @@ Rails.application.routes.draw do
     end
   end
 
+  if Rails.env.development?
+    get "profiler" => "profiler#index"
+  end
+
   # Defines the root path route ("/")
   # root "posts#index"
 end

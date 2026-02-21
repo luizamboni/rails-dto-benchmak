@@ -10,6 +10,7 @@ group :development do
   gem "sorbet-rails"
   gem "sorbet-static-and-runtime", "0.5.12443"
   gem "tapioca", require: false
+  gem "rack-mini-profiler", require: false
 end
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
